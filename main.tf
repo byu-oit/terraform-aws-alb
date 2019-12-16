@@ -78,7 +78,6 @@ resource "aws_alb_target_group" "groups" {
   deregistration_delay = var.deregistration_delay
   health_check {
     path = local.health_checks[each.value].path
-    //    protocol = local.health_checks[each.value].health_check_protocol
     interval            = local.health_checks[each.value].interval
     timeout             = local.health_checks[each.value].timeout
     healthy_threshold   = local.health_checks[each.value].healthy_threshold
