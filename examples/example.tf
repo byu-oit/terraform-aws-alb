@@ -15,8 +15,6 @@ module "simple_alb" {
     {
       public_port       = 80
       target_port       = 8000
-      health_check_path = null
-      health_check_port = null
     },
     {
       public_port = 443
