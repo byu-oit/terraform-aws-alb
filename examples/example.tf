@@ -13,8 +13,8 @@ module "simple_alb" {
   name = "example"
   port_mappings = [
     {
-      public_port       = 80
-      target_port       = 8000
+      public_port = 80
+      target_port = 8000
     },
     {
       public_port = 443
