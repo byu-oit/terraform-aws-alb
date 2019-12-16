@@ -76,6 +76,7 @@ resource "aws_alb_target_group" "groups" {
   protocol             = "HTTP"
   vpc_id               = var.vpc_id
   deregistration_delay = var.deregistration_delay
+  target_type          = "ip"
   health_check {
     path = local.health_checks[each.value].path
     interval            = local.health_checks[each.value].interval
