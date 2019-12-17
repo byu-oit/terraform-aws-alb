@@ -4,14 +4,12 @@ Terraform module to create Application Load Balancer, Target Group(s) and Listen
 ## Usage
 ```hcl
 module "simple_alb" {
-  source = "git@github.com:byu-oit/terraform-aws-alb.git?ref=v1.0.0"
+  source = "git@github.com:byu-oit/terraform-aws-alb.git?ref=v1.0.1"
   name = "example"
   port_mappings = [
     {
       public_port = 80
       target_port = 8000
-      health_check_path = null
-      health_check_port = null
     },
     {
       public_port = 443

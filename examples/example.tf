@@ -8,7 +8,7 @@ module "acs" {
 }
 
 module "simple_alb" {
-  source = "git@github.com:byu-oit/terraform-aws-alb.git?ref=v1.0.0"
+  source = "git@github.com:byu-oit/terraform-aws-alb.git?ref=v1.0.1"
   //  source = "../"
   name = "example"
   port_mappings = [
