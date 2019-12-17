@@ -86,6 +86,8 @@ resource "aws_alb_target_group" "groups" {
   }
 
   tags = var.tags
+
+  depends_on = [aws_alb.alb]
 }
 
 resource "aws_alb_listener" "listeners" {
@@ -101,4 +103,6 @@ resource "aws_alb_listener" "listeners" {
     type             = "forward"
     target_group_arn = aws_alb_target_group.groups[each.value].arn
   }
+
+  depends_on = [aws_alb.alb, aws_alb_target_group.groups]
 }
