@@ -76,6 +76,7 @@ resource "aws_alb_target_group" "groups" {
   protocol             = "HTTP"
   vpc_id               = var.vpc_id
   deregistration_delay = var.deregistration_delay
+  target_type          = "ip"
   health_check {
     path = local.health_checks[each.value].path
     interval            = local.health_checks[each.value].interval
@@ -85,6 +86,8 @@ resource "aws_alb_target_group" "groups" {
   }
 
   tags = var.tags
+
+  depends_on = [aws_alb.alb]
 }
 
 resource "aws_alb_listener" "listeners" {
@@ -100,4 +103,6 @@ resource "aws_alb_listener" "listeners" {
     type             = "forward"
     target_group_arn = aws_alb_target_group.groups[each.value].arn
   }
+
+  depends_on = [aws_alb.alb, aws_alb_target_group.groups]
 }
