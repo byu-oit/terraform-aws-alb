@@ -7,7 +7,7 @@ output "target_groups" {
 }
 
 output "listeners" {
-  value = aws_alb_listener.listeners
+  value = var.is_blue_green ? aws_alb_listener.blue_green_listeners : aws_alb_listener.listeners
 }
 
 output "alb_security_group" {
