@@ -9,7 +9,7 @@ module "acs" {
 
 module "simple_alb" {
     source = "git@github.com:byu-oit/terraform-aws-alb.git?ref=v1.1.0"
-//  source = "../../"
+//  source = "../../" // used for local testing
   name   = "simple-example"
   vpc_id     = module.acs.vpc.id
   subnet_ids = module.acs.public_subnet_ids

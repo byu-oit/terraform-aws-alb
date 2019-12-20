@@ -9,7 +9,7 @@ module "acs" {
 
 module "simple_alb" {
     source = "git@github.com:byu-oit/terraform-aws-alb.git?ref=v1.1.0"
-//  source = "../../"
+//  source = "../../" // used for local testing
   name   = "blue-green-example"
   vpc_id     = module.acs.vpc.id
   subnet_ids = module.acs.public_subnet_ids
@@ -17,7 +17,7 @@ module "simple_alb" {
 
   default_target_group_config = {
     type                 = "ip"
-    deregistration_delay = 60 // deregister
+    deregistration_delay = 60
     slow_start           = 15
     health_check = {
       path                = "/"
