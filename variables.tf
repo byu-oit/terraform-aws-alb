@@ -13,9 +13,9 @@ variable "subnet_ids" {
 }
 variable "default_target_group_config" {
   type = object({
-    type = string // instance
-    deregistration_delay = number // 300
-    slow_start = number // 0
+    type                       = string // instance
+    deregistration_delay       = number // 300
+    slow_start                 = number // 0
     stickiness_cookie_duration = number // null
     health_check = object({
       path                = string
@@ -29,13 +29,13 @@ variable "default_target_group_config" {
 }
 variable "target_groups" {
   type = list(object({
-    name_suffix = string
+    name_suffix    = string
     listener_ports = list(number)
-    port = number
+    port           = number
     config = object({
-      type = string
+      type                 = string
       deregistration_delay = number // 300
-      slow_start = number // 0
+      slow_start           = number // 0
       health_check = object({
         path                = string
         interval            = number
@@ -46,6 +46,7 @@ variable "target_groups" {
       stickiness_cookie_duration = number
     })
   }))
+  description = "List of information defining the target groups to create"
 }
 
 // Optional
