@@ -50,6 +50,11 @@ variable "target_groups" {
 }
 
 // Optional
+variable "is_blue_green" {
+  type = bool
+  description = "Boolean to identify that this ALB will be used for blue green deployments. `true` will cause the listeners to ignore changes to "
+  default = false
+}
 variable "idle_timeout" {
   type        = number
   description = "The time in seconds that the connection is allowed to be idle. Defaults to 60."

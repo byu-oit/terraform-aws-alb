@@ -13,6 +13,7 @@ module "simple_alb" {
   name   = "blue-green-example"
   vpc_id     = module.acs.vpc.id
   subnet_ids = module.acs.public_subnet_ids
+  is_blue_green = true
 
   default_target_group_config = {
     type                 = "ip"

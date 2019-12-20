@@ -106,7 +106,7 @@ resource "aws_alb_target_group" "groups" {
 
 // Map of listeners keyed by the listener port
 resource "aws_alb_listener" "listeners" {
-  for_each = local.listeners_map
+  for_each = var.is_blue_green ? {} : local.listeners_map
 
   load_balancer_arn = aws_alb.alb.arn
   port              = tonumber(each.key)
@@ -119,5 +119,26 @@ resource "aws_alb_listener" "listeners" {
     target_group_arn = aws_alb_target_group.groups[each.value].arn
   }
 
+  depends_on = [aws_alb.alb, aws_alb_target_group.groups]
+}
+
+// Map of listeners keyed by the listener port
+resource "aws_alb_listener" "blue_green_listeners" {
+  for_each = var.is_blue_green ? local.listeners_map : {}
+
+  load_balancer_arn = aws_alb.alb.arn
+  port              = tonumber(each.key)
+
+  protocol        = tonumber(each.key) == 443 ? "HTTPS" : "HTTP"
+  certificate_arn = tonumber(each.key) == 443 ? module.acs.certificate.arn : null
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_alb_target_group.groups[each.value].arn
+  }
+
+  lifecycle {
+    ignore_changes = [default_action[0].target_group_arn]
+  }
   depends_on = [aws_alb.alb, aws_alb_target_group.groups]
 }
