@@ -46,7 +46,8 @@ module "simple_alb" {
 | vpc_id | ID of the VPC | |
 | subnet_ids | List of subnet IDs for the targets of the ALB | |
 | default_target_group_config | Default configuration for `target_groups`. See [below](#default_target_group_config) | |
-| target_groups | List of information defining the target groups to create. See [below](#target_groups) | | 
+| target_groups | List of information defining the target groups to create. See [below](#target_groups) | |
+| is_blue_green | Boolean to identify that this ALB will be used for blue green deployments. `true` will cause the listeners to ignore changes to the forwarded target group because code deploy can change that | false | 
 | idle_timeout | The time in seconds that the connection is allowed to be idle | 60 |
 | tags | Tags to attach to the ALB and target groups | {} |
 

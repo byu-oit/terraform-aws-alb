@@ -52,7 +52,7 @@ variable "target_groups" {
 // Optional
 variable "is_blue_green" {
   type = bool
-  description = "Boolean to identify that this ALB will be used for blue green deployments. `true` will cause the listeners to ignore changes to "
+  description = "Boolean to identify that this ALB will be used for blue green deployments. `true` will cause the listeners to ignore changes to the forwarded target group because code deploy can change that."
   default = false
 }
 variable "idle_timeout" {
