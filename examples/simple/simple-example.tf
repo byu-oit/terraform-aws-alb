@@ -1,5 +1,6 @@
 provider "aws" {
-  region = "us-west-2"
+  version = "~> 2.42"
+  region  = "us-west-2"
 }
 
 module "acs" {

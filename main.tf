@@ -1,3 +1,10 @@
+terraform {
+  required_version = ">= 0.12.16"
+  required_providers {
+    aws = ">= 2.42"
+  }
+}
+
 module "acs" {
   source = "git@github.com:byu-oit/terraform-aws-acs-info.git?ref=v1.0.4"
   env    = "dev"

@@ -1,3 +1,5 @@
+![Latest GitHub Release](https://img.shields.io/github/v/release/byu-oit/terraform-aws-alb?sort=semver)
+
 # AWS Terraform ALB
 Terraform module to create Application Load Balancer, Target Group(s) and Listener(s)
 
@@ -37,6 +39,9 @@ module "simple_alb" {
   ]
 }
 ```
+
+## Requirements
+* Terraform version 0.12.16 or greater
 
 ## Inputs
 
