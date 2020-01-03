@@ -9,34 +9,34 @@ module "acs" {
 }
 
 module "simple_alb" {
-    source = "git@github.com:byu-oit/terraform-aws-alb.git?ref=v1.1.0"
-//  source = "../../" // used for local testing
-  name   = "simple-example"
+  source     = "git@github.com:byu-oit/terraform-aws-alb.git?ref=v1.1.0"
+  name       = "simple-example"
   vpc_id     = module.acs.vpc.id
   subnet_ids = module.acs.public_subnet_ids
-
-  default_target_group_config = {
-    type                 = "ip" // or instance or lambda
-    deregistration_delay = null
-    slow_start           = null
-    health_check = {
-      path                = "/"
-      interval            = null
-      timeout             = null
-      healthy_threshold   = null
-      unhealthy_threshold = null
+  target_groups = {
+    main = {
+      port                 = 8000
+      type                 = "ip" // or instance or lambda
+      deregistration_delay = null
+      slow_start           = null
+      health_check = {
+        path                = "/"
+        interval            = null
+        timeout             = null
+        healthy_threshold   = null
+        unhealthy_threshold = null
+      }
+      stickiness_cookie_duration = null
     }
-    stickiness_cookie_duration = null
   }
-  target_groups = [
-    {
-      listener_ports = [
-        80,
-        443
-      ]
-      name_suffix = "main"
-      port        = 8000
-      config      = null // use default
+  listeners = {
+    80 = {
+      redirect_to = 443
+      forward_to  = null
+    },
+    443 = {
+      redirect_to = null
+      forward_to  = "main"
     }
-  ]
+  }
 }

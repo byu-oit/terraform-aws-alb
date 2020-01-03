@@ -8,55 +8,50 @@ module "acs" {
   env    = "dev"
 }
 
-module "simple_alb" {
-    source = "git@github.com:byu-oit/terraform-aws-alb.git?ref=v1.1.0"
-//  source = "../../" // used for local testing
-  name   = "blue-green-example"
-  vpc_id     = module.acs.vpc.id
-  subnet_ids = module.acs.public_subnet_ids
+module "blue_green_alb" {
+  source        = "git@github.com:byu-oit/terraform-aws-alb.git?ref=v1.1.0"
+  name          = "blue-green-example"
+  vpc_id        = module.acs.vpc.id
+  subnet_ids    = module.acs.public_subnet_ids
   is_blue_green = true
-
-  default_target_group_config = {
-    type                 = "ip"
-    deregistration_delay = 60
-    slow_start           = 15
-    health_check = {
-      path                = "/"
-      interval            = null
-      timeout             = null
-      healthy_threshold   = null
-      unhealthy_threshold = null
-    }
-    stickiness_cookie_duration = 86400
-  }
-  target_groups = [
-    {
-      listener_ports = [
-        80,
-        443,
-        8001 // test listener
-      ]
-      name_suffix = "blue"
-      port        = 8000
-      config      = null // use default
-    },
-    {
-      listener_ports = []
-      name_suffix    = "green"
-      port           = 8000
-      config = {
-        type = "ip"
-        deregistration_delay = null
-        slow_start           = null
-        health_check = {
-          path                = "/green"
-          interval            = null
-          timeout             = null
-          healthy_threshold   = 4
-          unhealthy_threshold = 2
-        }
-        stickiness_cookie_duration = null
+  target_groups = {
+    blue = {
+      port                 = 8000
+      type                 = "ip" // or instance or lambda
+      deregistration_delay = null
+      slow_start           = null
+      health_check = {
+        path                = "/"
+        interval            = null
+        timeout             = null
+        healthy_threshold   = null
+        unhealthy_threshold = null
       }
+      stickiness_cookie_duration = null
+    },
+    green = {
+      port                 = 8000
+      type                 = "ip" // or instance or lambda
+      deregistration_delay = null
+      slow_start           = null
+      health_check = {
+        path                = "/"
+        interval            = null
+        timeout             = null
+        healthy_threshold   = null
+        unhealthy_threshold = null
+      }
+      stickiness_cookie_duration = null
     }
-  ]
+  }
+  listeners = {
+    80 = {
+      redirect_to = 443
+      forward_to  = null
+    },
+    443 = {
+      redirect_to = null
+      forward_to  = "blue"
+    }
+  }
 }
