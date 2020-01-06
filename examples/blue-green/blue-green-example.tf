@@ -9,7 +9,7 @@ module "acs" {
 }
 
 module "blue_green_alb" {
-  source = "git@github.com:byu-oit/terraform-aws-alb.git?ref=v1.1.0"
+  source = "git@github.com:byu-oit/terraform-aws-alb.git?ref=v1.2.0"
   //  source        = "../../"
   name       = "blue-green-example"
   vpc_id     = module.acs.vpc.id
