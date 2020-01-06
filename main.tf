@@ -1,40 +1,24 @@
-module "acs" {
-  source = "git@github.com:byu-oit/terraform-aws-acs-info.git?ref=v1.0.4"
-  env    = "dev"
+terraform {
+  required_version = ">= 0.12.16"
+  required_providers {
+    aws = ">= 2.42"
+  }
 }
 
 locals {
-  // needed to create the target_groups_map
-  target_group_suffixes = [
-    for tg in var.target_groups :
-    tg.name_suffix
-  ]
-  // needed to create the listeners_map
-  mappings = flatten([
-    for tg in var.target_groups :
-    [
-      for public_port in tg.listener_ports :
-      {
-        public_port         = public_port
-        target_group_suffix = tg.name_suffix
-      }
-    ]
-  ])
-  // needed to create the listeners_map
-  public_ports = [
-    for p in local.mappings :
-    tostring(p.public_port)
-  ]
-  // needed to create the listeners_map
-  listener_tg_suffixes = [
-    for p in local.mappings :
-    p.target_group_suffix
-  ]
-
-  // Used to create the map of target group resources
-  target_groups_map = zipmap(local.target_group_suffixes, var.target_groups)
-  // Used to create the map of listeners
-  listeners_map = zipmap(local.public_ports, local.listener_tg_suffixes)
+  public_ports = keys(var.listeners)
+  regular_listener_ports = toset(compact([
+    for port in local.public_ports :
+    (var.listeners[port].forward_to != null ? (! var.listeners[port].forward_to.ignore_changes ? port : null) : null)
+  ]))
+  ignore_forward_targets_listener_ports = toset(compact([
+    for port in local.public_ports :
+    (var.listeners[port].forward_to != null ? (var.listeners[port].forward_to.ignore_changes ? port : null) : null)
+  ]))
+  redirected_listener_ports = toset(compact([
+    for port in local.public_ports :
+    (var.listeners[port].redirect_to != null ? port : null)
+  ]))
 }
 
 resource "aws_alb" "alb" {
@@ -52,11 +36,11 @@ resource "aws_security_group" "alb-sg" {
 
   // allow access to the ALB from anywhere for each and every listener port defined in the target_groups variable
   dynamic "ingress" {
-    for_each = local.public_ports
+    for_each = var.listeners
     content {
       protocol  = "tcp"
-      from_port = ingress.value
-      to_port   = ingress.value
+      from_port = ingress.key
+      to_port   = ingress.key
       cidr_blocks = [
       "0.0.0.0/0"]
     }
@@ -76,27 +60,26 @@ resource "aws_security_group" "alb-sg" {
 
 // Map of target groups keyed by the name_suffix
 resource "aws_alb_target_group" "groups" {
-  for_each = local.target_groups_map
+  for_each = var.target_groups
 
-  name     = "${var.name}-tg-${each.value.name_suffix}"
+  name     = "${var.name}-tg-${each.key}"
   port     = each.value.port
   protocol = "HTTP"
   vpc_id   = var.vpc_id
 
-  // if the specific target group `config` is defined, use the specific config values. If not then use the `default_target_group_config` values.
-  target_type          = each.value.config != null ? each.value.config.type : var.default_target_group_config.type
-  deregistration_delay = each.value.config != null ? each.value.config.deregistration_delay : var.default_target_group_config.deregistration_delay
+  target_type          = each.value.type
+  deregistration_delay = each.value.deregistration_delay
   health_check {
-    path                = each.value.config != null ? each.value.config.health_check.path : var.default_target_group_config.health_check.path
-    interval            = each.value.config != null ? each.value.config.health_check.interval : var.default_target_group_config.health_check.interval
-    timeout             = each.value.config != null ? each.value.config.health_check.timeout : var.default_target_group_config.health_check.timeout
-    healthy_threshold   = each.value.config != null ? each.value.config.health_check.healthy_threshold : var.default_target_group_config.health_check.healthy_threshold
-    unhealthy_threshold = each.value.config != null ? each.value.config.health_check.unhealthy_threshold : var.default_target_group_config.health_check.unhealthy_threshold
+    path                = each.value.health_check.path
+    interval            = each.value.health_check.interval
+    timeout             = each.value.health_check.timeout
+    healthy_threshold   = each.value.health_check.healthy_threshold
+    unhealthy_threshold = each.value.health_check.unhealthy_threshold
   }
   stickiness {
     type            = "lb_cookie"
-    cookie_duration = each.value.config != null ? each.value.config.stickiness_cookie_duration : var.default_target_group_config.stickiness_cookie_duration
-    enabled         = each.value.config != null ? each.value.config.stickiness_cookie_duration != null : var.default_target_group_config.stickiness_cookie_duration != null
+    cookie_duration = each.value.stickiness_cookie_duration
+    enabled         = each.value.stickiness_cookie_duration != null
   }
 
   tags = var.tags
@@ -105,40 +88,62 @@ resource "aws_alb_target_group" "groups" {
 }
 
 // Map of listeners keyed by the listener port
-resource "aws_alb_listener" "listeners" {
-  for_each = var.is_blue_green ? {} : local.listeners_map
+resource "aws_alb_listener" "regular_listeners" {
+  for_each = local.regular_listener_ports
 
   load_balancer_arn = aws_alb.alb.arn
   port              = tonumber(each.key)
 
-  protocol        = tonumber(each.key) == 443 ? "HTTPS" : "HTTP"
-  certificate_arn = tonumber(each.key) == 443 ? module.acs.certificate.arn : null
+  protocol        = var.listeners[each.key].protocol
+  certificate_arn = var.listeners[each.key].https_certificate_arn
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_alb_target_group.groups[each.value].arn
+    target_group_arn = aws_alb_target_group.groups[var.listeners[each.key].forward_to.target_group].arn
   }
 
   depends_on = [aws_alb.alb, aws_alb_target_group.groups]
 }
-
-// Map of listeners keyed by the listener port
-resource "aws_alb_listener" "blue_green_listeners" {
-  for_each = var.is_blue_green ? local.listeners_map : {}
+resource "aws_alb_listener" "ignore_forward_target_listeners" {
+  for_each = local.ignore_forward_targets_listener_ports
 
   load_balancer_arn = aws_alb.alb.arn
   port              = tonumber(each.key)
 
-  protocol        = tonumber(each.key) == 443 ? "HTTPS" : "HTTP"
-  certificate_arn = tonumber(each.key) == 443 ? module.acs.certificate.arn : null
+  protocol        = var.listeners[each.key].protocol
+  certificate_arn = var.listeners[each.key].https_certificate_arn
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_alb_target_group.groups[each.value].arn
+    target_group_arn = aws_alb_target_group.groups[var.listeners[each.key].forward_to.target_group].arn
   }
 
   lifecycle {
     ignore_changes = [default_action[0].target_group_arn]
   }
+  depends_on = [aws_alb.alb, aws_alb_target_group.groups]
+}
+
+// Map of listeners keyed by the listener port
+resource "aws_alb_listener" "redirected_listeners" {
+  for_each = local.redirected_listener_ports
+
+  load_balancer_arn = aws_alb.alb.arn
+  port              = tonumber(each.key)
+
+  protocol        = var.listeners[each.key].protocol
+  certificate_arn = var.listeners[each.key].https_certificate_arn
+
+  default_action {
+    type = "redirect"
+    redirect {
+      host        = var.listeners[each.key].redirect_to.host
+      path        = var.listeners[each.key].redirect_to.path
+      port        = var.listeners[each.key].redirect_to.port
+      protocol    = var.listeners[each.key].redirect_to.protocol
+      status_code = "HTTP_301"
+    }
+  }
+
   depends_on = [aws_alb.alb, aws_alb_target_group.groups]
 }

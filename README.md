@@ -1,42 +1,58 @@
+![Latest GitHub Release](https://img.shields.io/github/v/release/byu-oit/terraform-aws-alb?sort=semver)
+
 # AWS Terraform ALB
 Terraform module to create Application Load Balancer, Target Group(s) and Listener(s)
 
 ## Usage
 ```hcl
 module "simple_alb" {
-  source = "git@github.com:byu-oit/terraform-aws-alb.git?ref=v1.1.0"
-  name = "example"
-  vpc_id = module.acs.vpc.id
+  source = "git@github.com:byu-oit/terraform-aws-alb.git?ref=v1.2.0"
+  name       = "example"
+  vpc_id     = module.acs.vpc.id
   subnet_ids = module.acs.public_subnet_ids
-  default_target_group_config = {
-    type = "ip"
-        deregistration_delay = null
-        slow_start = null
-        health_check = {
-          path                = "/"
-          interval            = null
-          timeout             = null
-          healthy_threshold   = null
-          unhealthy_threshold = null
-        }
-        stickiness_cookie_duration = null
-  }
-  target_groups = [
-    {
-      name_suffix    = "blue"
-      listener_ports = [80]
-      port           = 8000
-      config         = null
-    },
-    {
-      name_suffix    = "green"
-      listener_ports = []
-      port           = 8000
-      config         = null
+  target_groups = {
+    main = {
+      port                 = 8000
+      type                 = "ip"
+      deregistration_delay = null
+      slow_start           = null
+      health_check = {
+        path                = "/"
+        interval            = null
+        timeout             = null
+        healthy_threshold   = null
+        unhealthy_threshold = null
+      }
+      stickiness_cookie_duration = null
     }
-  ]
+  }
+  listeners = {
+    80 = {
+      protocol              = "HTTP"
+      https_certificate_arn = null
+      redirect_to = {
+        host     = null
+        path     = null
+        port     = 443
+        protocol = "HTTPS"
+      }
+      forward_to = null
+    },
+    443 = {
+      protocol              = "HTTPS"
+      https_certificate_arn = module.acs.certificate.arn
+      redirect_to           = null
+      forward_to = {
+        target_group   = "main"
+        ignore_changes = false
+      }
+    }
+  }
 }
 ```
+
+## Requirements
+* Terraform version 0.12.16 or greater
 
 ## Inputs
 
@@ -45,17 +61,35 @@ module "simple_alb" {
 | name | Application Load Balancer name | |
 | vpc_id | ID of the VPC | |
 | subnet_ids | List of subnet IDs for the targets of the ALB | |
-| default_target_group_config | Default configuration for `target_groups`. See [below](#default_target_group_config) | |
-| target_groups | List of information defining the target groups to create. See [below](#target_groups) | |
-| is_blue_green | Boolean to identify that this ALB will be used for blue green deployments. `true` will cause the listeners to ignore changes to the forwarded target group because code deploy can change that | false | 
+| target_groups | Map of information defining the target groups to create. See [below](#target_groups) | |
+| listeners | Map of information defining the listeners to create. See [below](#listeners) | |
 | idle_timeout | The time in seconds that the connection is allowed to be idle | 60 |
 | tags | Tags to attach to the ALB and target groups | {} |
 
 **Note:** In order to use built in defaults you need to set the attribute to `null` (since terraform doesn't support optional attributes in objects yet). Example in the [usage section](#usage) above.
 
-#### default_target_group_config
-In order to not have to define target group configuration for every target group you define, you can define some 
-defaults with this object. You can override the defaults on specific target groups if needed.
+#### target_groups
+A map of objects that define the target groups to create. The map's key is the name (actually the name suffix that will 
+be constructed with the name of the alb) of the target group you want to create.
+
+The target group's name will be `<alb.name>-tg-<map_key>`. This will also be how the outputs are mapped.
+
+For instance, the following will create two target groups named `example-tg-blue` and `example-tg-green`: 
+```hcl
+name       = "example"
+vpc_id     = module.acs.vpc.id
+subnet_ids = module.acs.public_subnet_ids
+target_groups = {
+  "blue" = {
+  //...
+  },
+  "green" = {
+  //...  
+  } 
+}
+```
+
+* `port` - (Required) The port of the target group.
 * `type` - (Optional) The type of target that you must specify when registering targets with this target group [`instance`, `ip`, or `lambda`]. Defaults to `instance`.
 * `deregistration_delay` - (Optional) The amount time for Elastic Load Balancing to wait before changing the state of a deregistering target from draining to unused. Defaults to 300 seconds.
 * `slow_start` - (Optional) The amount time for targets to warm up before the load balancer sends them a full share of requests. Defaults to 0 seconds.
@@ -67,12 +101,21 @@ defaults with this object. You can override the defaults on specific target grou
     * `healthy_threshold` - (Optional) The number of consecutive health checks successes required before considering an unhealthy target healthy. Defaults to 3.
     * `unhealthy_threshold` - (Optional) The number of consecutive health check failures required before considering the target unhealthy. Defaults to 3.
 
-#### target_groups
-A list of objects that define the target groups to create along with the listener ports that forward traffic to each target group.
-* `name_suffix` - (Required) The suffix to append to the end of the target group name. The target group name will be `<alb.name>-tg-<target_group.name_suffix>`. This will also be how the outputs are mapped.
-* `listener_ports` - (Required) A list of public port numbers that you want to be forwarded to this target group. This will create ingress rules to the ALB's security group to allow traffic from anywhere to these specified ports.  
-* `port` - (Required) The port on which targets receive traffic.
-* `config` - (Optional) If provided, override all values in the [`default_target_group_config`](#default_target_group_config). (Same attributes as the  [`default_target_group_config`](#default_target_group_config) object).
+#### listeners
+A map of objects defining the listeners to create. The map's key is the listener or public port to create.
+
+A listener can be configured to either forward traffic to a target group or to redirect traffic. Defining both will probably result in an error.
+
+* `protocol` - (Optional) The protocol for connections from clients to the load balancer. Valid values are TCP, TLS, UDP, TCP_UDP, HTTP and HTTPS. Defaults to HTTP.
+* `https_certificate_arn` - (Optional) The ARN of the default SSL server certificate. Exactly one certificate is required if the protocol is HTTPS.
+* `forward_to` - (Optional) If this listener should forward traffic, define this object:
+    * `target_group` - (Required) The target group name suffix (or mapped key in the `target_groups` variables) to forward traffic to.
+    * `ignore_changes` - (Required) Boolean to tell terraform to ignore changes to this target group definition. This is useful when something else (like CodeDeploy) changes the listener's forwarded target group.
+* `redirect_to` - (Optional) If this listener should redirect traffic, define this object:
+    * `host` - (Optional) The hostname to direct traffic. This component is not percent-encoded. The hostname can contain #{host}. Defaults to #{host}.
+    * `path` - (Optional) The absolute path, starting with the leading "/". This component is not percent-encoded. The path can contain #{host}, #{path}, and #{port}. Defaults to /#{path}.
+    * `port` - (Optional) The port. Specify a value from 1 to 65535 or #{port}. Defaults to #{port}.
+    * `protocol` - (Optional) The protocol. Valid values are HTTP, HTTPS, or #{protocol}. Defaults to #{protocol}.
 
 ## Outputs
 | Name | Description |
@@ -102,7 +145,7 @@ target_groups = {
 }
 
 listeners = {
-  "80" = {
+  "443" = {
     "arn" = "..."
     "default_action" = {
       "target_group_arn" = "arn...example-tg-blue..."

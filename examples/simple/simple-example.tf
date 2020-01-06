@@ -1,5 +1,6 @@
 provider "aws" {
-  region = "us-west-2"
+  version = "~> 2.42"
+  region  = "us-west-2"
 }
 
 module "acs" {
@@ -8,34 +9,47 @@ module "acs" {
 }
 
 module "simple_alb" {
-    source = "git@github.com:byu-oit/terraform-aws-alb.git?ref=v1.1.0"
-//  source = "../../" // used for local testing
-  name   = "simple-example"
+  source = "git@github.com:byu-oit/terraform-aws-alb.git?ref=v1.2.0"
+  //  source     = "../../"
+  name       = "simple-example"
   vpc_id     = module.acs.vpc.id
   subnet_ids = module.acs.public_subnet_ids
-
-  default_target_group_config = {
-    type                 = "ip" // or instance or lambda
-    deregistration_delay = null
-    slow_start           = null
-    health_check = {
-      path                = "/"
-      interval            = null
-      timeout             = null
-      healthy_threshold   = null
-      unhealthy_threshold = null
+  target_groups = {
+    main = {
+      port                 = 8000
+      type                 = "ip"
+      deregistration_delay = null
+      slow_start           = null
+      health_check = {
+        path                = "/"
+        interval            = null
+        timeout             = null
+        healthy_threshold   = null
+        unhealthy_threshold = null
+      }
+      stickiness_cookie_duration = null
     }
-    stickiness_cookie_duration = null
   }
-  target_groups = [
-    {
-      listener_ports = [
-        80,
-        443
-      ]
-      name_suffix = "main"
-      port        = 8000
-      config      = null // use default
+  listeners = {
+    80 = {
+      protocol              = "HTTP"
+      https_certificate_arn = null
+      redirect_to = {
+        host     = null
+        path     = null
+        port     = 443
+        protocol = "HTTPS"
+      }
+      forward_to = null
+    },
+    443 = {
+      protocol              = "HTTPS"
+      https_certificate_arn = module.acs.certificate.arn
+      redirect_to           = null
+      forward_to = {
+        target_group   = "main"
+        ignore_changes = false
+      }
     }
-  ]
+  }
 }
