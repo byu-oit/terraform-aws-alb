@@ -7,7 +7,7 @@ output "target_groups" {
 }
 
 output "listeners" {
-  value = var.is_blue_green ? aws_alb_listener.blue_green_listeners : aws_alb_listener.listeners
+  value = merge(aws_alb_listener.regular_listeners, aws_alb_listener.ignore_forward_target_listeners, aws_alb_listener.redirected_listeners)
 }
 
 output "alb_security_group" {

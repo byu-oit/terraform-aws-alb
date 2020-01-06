@@ -9,14 +9,15 @@ module "acs" {
 }
 
 module "simple_alb" {
-  source     = "git@github.com:byu-oit/terraform-aws-alb.git?ref=v1.1.0"
+  source = "git@github.com:byu-oit/terraform-aws-alb.git?ref=v1.1.0"
+  //  source     = "../../"
   name       = "simple-example"
   vpc_id     = module.acs.vpc.id
   subnet_ids = module.acs.public_subnet_ids
   target_groups = {
     main = {
       port                 = 8000
-      type                 = "ip" // or instance or lambda
+      type                 = "ip"
       deregistration_delay = null
       slow_start           = null
       health_check = {
@@ -31,12 +32,24 @@ module "simple_alb" {
   }
   listeners = {
     80 = {
-      redirect_to = 443
-      forward_to  = null
+      protocol              = "HTTP"
+      https_certificate_arn = null
+      redirect_to = {
+        host     = null
+        path     = null
+        port     = 443
+        protocol = "HTTPS"
+      }
+      forward_to = null
     },
     443 = {
-      redirect_to = null
-      forward_to  = "main"
+      protocol              = "HTTPS"
+      https_certificate_arn = module.acs.certificate.arn
+      redirect_to           = null
+      forward_to = {
+        target_group   = "main"
+        ignore_changes = false
+      }
     }
   }
 }

@@ -11,12 +11,16 @@ variable "subnet_ids" {
   type        = list(string)
   description = "List of subnet IDs for the targets of the ALB."
 }
-variable "default_target_group_config" {
-  type = object({
-    type                       = string // instance
-    deregistration_delay       = number // 300
-    slow_start                 = number // 0
-    stickiness_cookie_duration = number // null
+
+variable "target_groups" {
+  type = map(object({
+    port                 = number
+    type                 = string
+    deregistration_delay = number
+    // 300
+    slow_start = number
+    // 0
+    stickiness_cookie_duration = number
     health_check = object({
       path                = string
       interval            = number
@@ -24,37 +28,28 @@ variable "default_target_group_config" {
       healthy_threshold   = number
       unhealthy_threshold = number
     })
-  })
-  description = "Default configuration for `target_groups`"
+  }))
+  description = "Map of target groups with the key as the target group name suffix"
 }
-variable "target_groups" {
-  type = list(object({
-    name_suffix    = string
-    listener_ports = list(number)
-    port           = number
-    config = object({
-      type                 = string
-      deregistration_delay = number // 300
-      slow_start           = number // 0
-      health_check = object({
-        path                = string
-        interval            = number
-        timeout             = number
-        healthy_threshold   = number
-        unhealthy_threshold = number
-      })
-      stickiness_cookie_duration = number
+variable "listeners" {
+  type = map(object({
+    protocol              = string
+    https_certificate_arn = string
+    forward_to = object({
+      target_group   = string
+      ignore_changes = bool
+    })
+    redirect_to = object({
+      host     = string
+      path     = string
+      port     = number
+      protocol = string
     })
   }))
-  description = "List of information defining the target groups to create"
+  description = "Map of listeners with the key as the public port of the listener"
 }
 
 // Optional
-variable "is_blue_green" {
-  type = bool
-  description = "Boolean to identify that this ALB will be used for blue green deployments. `true` will cause the listeners to ignore changes to the forwarded target group because code deploy can change that."
-  default = false
-}
 variable "idle_timeout" {
   type        = number
   description = "The time in seconds that the connection is allowed to be idle. Defaults to 60."
