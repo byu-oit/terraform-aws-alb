@@ -11,15 +11,12 @@ variable "subnet_ids" {
   type        = list(string)
   description = "List of subnet IDs for the targets of the ALB."
 }
-
 variable "target_groups" {
   type = map(object({
     port                 = number
     type                 = string
     deregistration_delay = number
-    // 300
     slow_start = number
-    // 0
     stickiness_cookie_duration = number
     health_check = object({
       path                = string
