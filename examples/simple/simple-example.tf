@@ -4,12 +4,12 @@ provider "aws" {
 }
 
 module "acs" {
-  source = "git@github.com:byu-oit/terraform-aws-acs-info.git?ref=v1.0.4"
+  source = "github.com/byu-oit/terraform-aws-acs-info.git?ref=v1.2.1"
   env    = "dev"
 }
 
 module "simple_alb" {
-  source = "git@github.com:byu-oit/terraform-aws-alb.git?ref=v1.2.0"
+  source = "github.com/byu-oit/terraform-aws-alb?ref=v1.2.1"
   //  source     = "../../"
   name       = "simple-example"
   vpc_id     = module.acs.vpc.id

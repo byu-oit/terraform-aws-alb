@@ -6,7 +6,7 @@ Terraform module to create Application Load Balancer, Target Group(s) and Listen
 ## Usage
 ```hcl
 module "simple_alb" {
-  source = "git@github.com:byu-oit/terraform-aws-alb.git?ref=v1.2.0"
+  source = "github.com/byu-oit/terraform-aws-alb?ref=v1.2.1"
   name       = "example"
   vpc_id     = module.acs.vpc.id
   subnet_ids = module.acs.public_subnet_ids
